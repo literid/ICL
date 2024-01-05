@@ -12,6 +12,9 @@ torch = "^2.1.2"
 torchvision = "^0.16.2"
 
 
+[tool.poetry.group.dev.dependencies]
+matplotlib = "^3.8.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
