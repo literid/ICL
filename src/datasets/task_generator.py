@@ -48,7 +48,7 @@ class TaskDataset(Dataset):
         self.label_transform = label_transform
 
     def __len__(self):
-        return len(self.base_dataset)
+        return len(self.base_dataset)  # type: ignore
 
     def __getitem__(self, idx: int):
         x, y = self.base_dataset[idx]
