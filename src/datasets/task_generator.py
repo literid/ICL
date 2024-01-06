@@ -64,7 +64,7 @@ class MNISTTaskGenerator:
         self.seed = seed
 
     def generate_tasks(self, num_tasks):
-        base_dataset = MNIST(self.mnist_path)
+        base_dataset = MNIST(self.mnist_path, download=True)
 
         for i in range(num_tasks):
             if self.seed is not None:
