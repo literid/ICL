@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 from torchvision.datasets import MNIST
 
@@ -62,6 +62,26 @@ class TaskDataset(Dataset):
         return x, y
 
 
+def read_mnist(mnist_path):
+    input_transform = T.Compose(
+        [
+            T.ToTensor(),
+            T.Normalize((0.1307,), (0.3081,)),
+            T.Lambda(lambda x: x.reshape(-1, 1)),
+        ]
+    )
+    mnist = MNIST(mnist_path, download=True, transform=input_transform)
+    data = []
+    dl = DataLoader(mnist, 1)
+
+    for x, y in dl:
+        x = x.squeeze(0)
+        y = y.squeeze(0)
+        data.append((x, y))
+
+    return data
+
+
 class MNISTTaskGenerator:
     def __init__(self, mnist_path, seed=None) -> None:
         self.mnist_path = mnist_path
@@ -85,3 +105,22 @@ class MNISTTaskGenerator:
             )
             label_transform = LabelPermuteTransform(10, seed)
             yield TaskDataset(base_dataset, input_transform, label_transform)
+
+
+class PermuteProjectTaskGenerator:
+    def __init__(self, data, projection_ndim, n_classes, seed=None) -> None:
+        self.data = data
+        self.projection_ndim = projection_ndim
+        self.n_classes = n_classes
+        self.seed = seed
+
+    def generate_tasks(self, num_tasks):
+        for i in range(num_tasks):
+            if self.seed is not None:
+                seed = i + self.seed
+            else:
+                seed = None
+
+            input_transform = ProjectionTransform(self.projection_ndim, seed)
+            label_transform = LabelPermuteTransform(self.n_classes, seed)
+            yield TaskDataset(self.data, input_transform, label_transform)
