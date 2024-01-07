@@ -7,7 +7,7 @@ class MetaLearningLoss(nn.Module):
         super().__init__()
         self.ce = nn.CrossEntropyLoss(reduction="mean")
 
-    def forward(self, y_true: torch.Tensor, y_pred: torch.Tensor) -> torch.Tensor:
+    def forward(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
         r"""
         Computes the sum of the cross entropy losses
         for each prediction computed by prefix of data
