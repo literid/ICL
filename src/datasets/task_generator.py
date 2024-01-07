@@ -17,8 +17,12 @@ class ProjectionTransform(nn.Module):
         std = (1 / self.ndim) ** 1 / 2
         self.projection_matrix = torch.normal(mean, std, (self.ndim, self.ndim))
 
-    def forward(self, x):
-        return torch.mm(self.projection_matrix, x)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        `B` - batch size, `N` - `ndim`
+        Args: x: torch.Tensor shape `(B, N)`
+        Returns: torch.Tensor shape `(B, N)`"""
+        return torch.mm(self.projection_matrix, x).squeeze(-1)
 
 
 class LabelPermuteTransform(nn.Module):
