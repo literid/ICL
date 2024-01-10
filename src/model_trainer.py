@@ -17,7 +17,7 @@ class Trainer:
         total_loss = 0.0
         num_batches = len(self.train_loader)
 
-        for batch_idx, (inputs, targets) in enumerate(self.train_loader):
+        for inputs, targets in self.train_loader:
             inputs, targets = inputs.to(self.device), targets.to(self.device)
             self.optimizer.zero_grad()
             outputs = self.model(inputs)
@@ -39,7 +39,7 @@ class Trainer:
         num_batches = len(self.val_loader)
 
         with torch.no_grad():
-            for batch_idx, (inputs, targets) in enumerate(self.val_loader):
+            for inputs, targets in self.val_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 outputs = self.model(inputs)
                 loss = self.loss_fn(outputs, targets)
