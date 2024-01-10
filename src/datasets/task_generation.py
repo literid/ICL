@@ -62,7 +62,7 @@ class TaskDataset(Dataset):
         return x, y
 
 
-def read_mnist(mnist_path):
+def read_mnist(mnist_path, train=True):
     input_transform = T.Compose(
         [
             T.ToTensor(),
@@ -70,7 +70,7 @@ def read_mnist(mnist_path):
             T.Lambda(lambda x: x.reshape(-1, 1)),
         ]
     )
-    mnist = MNIST(mnist_path, download=True, transform=input_transform)
+    mnist = MNIST(mnist_path, train=train, download=True, transform=input_transform)
     data = []
     dl = DataLoader(mnist, 1)
 
