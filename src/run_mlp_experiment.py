@@ -54,6 +54,7 @@ def train_model(
     early_stopping_patience,
     save_path,
     eval_tasks_num,
+    eval_every_n_epoch,
 ):
     trainer = Trainer(
         model,
@@ -65,7 +66,9 @@ def train_model(
         early_stopping_patience,
     )
 
-    trainer.train(num_epochs, eval_tasks_num=eval_tasks_num)
+    trainer.train(
+        num_epochs, eval_tasks_num=eval_tasks_num, eval_every_n_epoch=eval_every_n_epoch
+    )
     torch.save(model.state_dict(), save_path)
     artifact = wandb.Artifact("model", type="model")
     artifact.add_file(str(save_path))
@@ -117,6 +120,7 @@ def main(args):
         early_stopping_patience=args.early_stopping_patience,
         save_path=args.save_path,
         eval_tasks_num=args.eval_tasks_num,
+        eval_every_n_epoch=args.eval_every_n_epoch,
     )
 
     wandb.finish()
@@ -181,6 +185,12 @@ if __name__ == "__main__":
         type=int,
         default=10,
         help="Patience for early stopping",
+    )
+    parser.add_argument(
+        "--eval_every_n_epoch",
+        type=int,
+        default=100,
+        help="Eval every n epochs",
     )
 
     args = parser.parse_args()
