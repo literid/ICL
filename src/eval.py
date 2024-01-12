@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from datasets.task_generation import TaskDataset
 
 
-def eval_accuracy(dataset: TaskDataset, model, bs=100):
+def eval_accuracy_on_taskdataset(dataset: TaskDataset, model, bs=100):
     correct = 0
     dataloader = DataLoader(dataset, batch_size=bs)
 
