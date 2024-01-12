@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 import wandb
@@ -76,6 +77,12 @@ class Trainer:
                 train_metrics, val_metrics = self.eval_metrics(eval_tasks_num)
                 log_dict["train"].update(train_metrics)
                 log_dict["val"].update(val_metrics)
+                if self.early_stopping is not None:
+                    val_metric = np.mean(list(val_metrics["acc"].values()))
+                    if self.early_stopping.should_stop(val_metric):
+                        print(f"Early stopping triggered at epoch {epoch}")
+                        wandb.log(log_dict)
+                        break
 
             wandb.log(log_dict)
 
@@ -96,11 +103,11 @@ class EarlyStopping:
         self.patience = patience
         self.min_delta = min_delta
         self.count = 0
-        self.min_val_loss = float("inf")
+        self.max_metric = float("-inf")
 
-    def should_stop(self, val_loss):
-        if val_loss < self.min_val_loss:
-            self.min_val_loss = val_loss
+    def should_stop(self, val_metric):
+        if val_metric - self.max_metric > self.min_delta:
+            self.max_metric = val_metric
             self.count = 0
         else:
             self.count += 1
