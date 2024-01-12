@@ -77,8 +77,12 @@ def main(args):
     n_classes = 10
 
     wandb.init(
-        project="my-awesome-project",
-        config={"architecture": "MLP", "dataset": "MNIST", **vars(args)},
+        project=args.wandb_project,
+        config={
+            "architecture": args.architecture_name,
+            "dataset": args.dataset_name,
+            **vars(args),
+        },
     )
 
     train_dataset, val_dataset, test_dataset = create_datasets(
@@ -119,6 +123,23 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MLP MetaLearningModel Training")
+    parser.add_argument(
+        "--wandb_project",
+        type=str,
+        help="Wandb project name",
+    )
+    parser.add_argument(
+        "--architecture_name",
+        type=str,
+        help="Logging architecture name in wandb",
+        default="MLP",
+    )
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        help="Logging dataset name in wandb",
+        default="MNIST",
+    )
     parser.add_argument(
         "--mnist_path",
         type=str,
