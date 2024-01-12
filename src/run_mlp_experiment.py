@@ -1,69 +1,160 @@
+import argparse
+
 import torch
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
+import wandb
 from datasets.dataset import MetaLearningDataset
 from datasets.task_generation import PermuteProjectTaskGenerator, read_mnist
-from eval import eval_accuracy_on_taskdataset
 from loss import MetaLearningLoss
 from model_trainer import Trainer
 from models.MLP import MetaLearningMLP
 
-mnist_path = "fake"
-train_mnist_data_all = read_mnist(mnist_path, train=True)
-test_mnist_data = read_mnist(mnist_path, train=False)
-train_mnist_data, val_mnist_data = train_test_split(
-    train_mnist_data_all, test_size=0.2, random_state=0
-)
 
-ndim = 28 * 28
-n_classes = 10
-train_tasks_generator = PermuteProjectTaskGenerator(
-    train_mnist_data, ndim, n_classes, seed=0
-)
-val_tasks_generator = PermuteProjectTaskGenerator(
-    val_mnist_data, ndim, n_classes, seed=0
-)
-test_tasks_generator = PermuteProjectTaskGenerator(
-    test_mnist_data, ndim, n_classes, seed=0
-)
-
-tasks_num = 2**4
-num_examples = 1
-batch_size = 2**3
-
-train_dataset = MetaLearningDataset(
-    tasks_num, train_tasks_generator, num_examples=num_examples, seed=0
-)
-val_dataset = MetaLearningDataset(
-    tasks_num, val_tasks_generator, num_examples=num_examples, seed=0
-)
-test_dataset = MetaLearningDataset(
-    tasks_num, test_tasks_generator, num_examples=num_examples, seed=0
-)
-train_dataloader = DataLoader(train_dataset, batch_size=batch_size)
-val_dataloader = DataLoader(val_dataset, batch_size=batch_size)
-
-
-torch.manual_seed(0)
-
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = MetaLearningMLP(784, 1024, 10)
-model.to(DEVICE)
-optimizer = optim.Adam(model.parameters(), lr=1e-2)
-trainer = Trainer(
-    model, optimizer, MetaLearningLoss(), DEVICE, train_dataloader, val_dataloader, None
-)
-trainer.train(30000)
-
-for i in range(tasks_num):
-    train_acc = eval_accuracy_on_taskdataset(
-        train_dataset.task_datasets[i], model, bs=1000
+def create_datasets(mnist_path, ndim, n_classes, tasks_num, num_examples, val_size=0.2):
+    train_mnist_data_all = read_mnist(mnist_path, train=True)
+    test_mnist_data = read_mnist(mnist_path, train=False)
+    train_mnist_data, val_mnist_data = train_test_split(
+        train_mnist_data_all, test_size=val_size, random_state=0
     )
-    val_acc = eval_accuracy_on_taskdataset(val_dataset.task_datasets[i], model, bs=1000)
-    test_acc = eval_accuracy_on_taskdataset(
-        test_dataset.task_datasets[i], model, bs=1000
+
+    train_tasks_generator = PermuteProjectTaskGenerator(
+        train_mnist_data, ndim, n_classes, seed=0
     )
-    print(f"{train_acc=}, {val_acc=}, {test_acc=}")
-# torch.save(model.state_dict(), "model0.pt")
+    val_tasks_generator = PermuteProjectTaskGenerator(
+        val_mnist_data, ndim, n_classes, seed=0
+    )
+    test_tasks_generator = PermuteProjectTaskGenerator(
+        test_mnist_data, ndim, n_classes, seed=0
+    )
+
+    train_dataset = MetaLearningDataset(
+        tasks_num, train_tasks_generator, num_examples=num_examples, seed=0
+    )
+    val_dataset = MetaLearningDataset(
+        tasks_num, val_tasks_generator, num_examples=num_examples, seed=0
+    )
+    test_dataset = MetaLearningDataset(
+        tasks_num, test_tasks_generator, num_examples=num_examples, seed=0
+    )
+
+    return train_dataset, val_dataset, test_dataset
+
+
+def train_model(
+    model,
+    optimizer,
+    loss_function,
+    device,
+    train_dataloader,
+    val_dataloader,
+    num_epochs,
+    early_stopping_patience,
+    save_path,
+    eval_tasks_num,
+):
+    trainer = Trainer(
+        model,
+        optimizer,
+        loss_function,
+        device,
+        train_dataloader,
+        val_dataloader,
+        early_stopping_patience,
+    )
+
+    trainer.train(num_epochs, eval_tasks_num=eval_tasks_num)
+    torch.save(model.state_dict(), save_path)
+    artifact = wandb.Artifact("model", type="model")
+    artifact.add_file(str(save_path))
+    wandb.log_artifact(artifact)
+
+
+def main(args):
+    ndim = 28 * 28
+    n_classes = 10
+
+    wandb.init(
+        project="my-awesome-project",
+        config={"architecture": "MLP", "dataset": "MNIST", **vars(args)},
+    )
+
+    train_dataset, val_dataset, test_dataset = create_datasets(
+        args.mnist_path,
+        ndim,
+        n_classes,
+        args.tasks_num,
+        args.num_examples,
+        args.val_size,
+    )
+
+    train_dataloader = DataLoader(train_dataset, batch_size=args.tasks_batch_size)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.tasks_batch_size)
+
+    torch.manual_seed(0)
+    torch.cuda.manual_seed_all(0)
+
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = MetaLearningMLP(ndim, args.hidden_dim, n_classes)
+    model.to(DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+
+    train_model(
+        model,
+        optimizer,
+        MetaLearningLoss(),
+        DEVICE,
+        train_dataloader,
+        val_dataloader,
+        num_epochs=args.num_epochs,
+        early_stopping_patience=args.early_stopping_patience,
+        save_path=args.save_path,
+        eval_tasks_num=args.eval_tasks_num,
+    )
+
+    wandb.finish()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="MLP MetaLearningModel Training")
+    parser.add_argument(
+        "--mnist_path",
+        type=str,
+        help="Path to MNIST dataset",
+    )
+    parser.add_argument("--tasks_num", type=int, default=4, help="Number of tasks")
+    parser.add_argument(
+        "--num_examples", type=int, default=1, help="Number of examples per task"
+    )
+    parser.add_argument(
+        "--val_size", type=float, default=0.2, help="Validation set size"
+    )
+    parser.add_argument(
+        "--tasks_batch_size", type=int, default=2, help="Tasks count per batch"
+    )
+    parser.add_argument(
+        "--hidden_dim", type=int, default=32, help="Hidden dimension of the model"
+    )
+    parser.add_argument("--lr", type=float, default=1e-2, help="Learning rate")
+    parser.add_argument(
+        "--num_epochs", type=int, default=5000, help="Number of training epochs"
+    )
+    parser.add_argument(
+        "--eval_tasks_num", type=int, default=2, help="Number of evaluation tasks"
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        help="Path to save the trained model",
+    )
+    parser.add_argument(
+        "--early_stopping_patience",
+        type=int,
+        default=10,
+        help="Patience for early stopping",
+    )
+
+    args = parser.parse_args()
+    main(args)
