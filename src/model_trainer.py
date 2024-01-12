@@ -90,10 +90,10 @@ class Trainer:
         train_metrics = {}
         val_metrics = {}
         train_metrics["acc"] = eval_accuracy_on_metalearningdataset(
-            self.train_loader.dataset, self.model, tasks_num
+            self.train_loader.dataset, self.model, self.device, tasks_num
         )
         val_metrics["acc"] = eval_accuracy_on_metalearningdataset(
-            self.val_loader.dataset, self.model, tasks_num
+            self.val_loader.dataset, self.model, self.device, tasks_num
         )
         return train_metrics, val_metrics
 
