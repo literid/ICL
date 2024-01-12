@@ -1,5 +1,9 @@
 import torch
 
+import wandb
+from datasets.dataset import MetaLearningDataset
+from eval import eval_accuracy_on_metalearningdataset
+
 
 class Trainer:
     def __init__(
@@ -9,7 +13,7 @@ class Trainer:
         loss_fn,
         device,
         train_loader,
-        val_loader=None,
+        val_loader,
         early_stopping_patience=None,
     ):
         self.model = model
@@ -20,7 +24,6 @@ class Trainer:
         self.val_loader = val_loader
 
         if early_stopping_patience is not None:
-            assert self.val_loader is not None, "Validation data not provided"
             self.early_stopping = EarlyStopping(early_stopping_patience)
         else:
             self.early_stopping = None
@@ -44,9 +47,6 @@ class Trainer:
         return average_loss
 
     def validate(self):
-        if self.val_loader is None:
-            raise ValueError("Validation data not provided")
-
         self.model.eval()
         total_loss = 0.0
         num_batches = len(self.val_loader)
@@ -61,24 +61,34 @@ class Trainer:
         average_loss = total_loss / num_batches
         return average_loss
 
-    def train(
-        self,
-        num_epochs,
-    ):
-        for epoch in range(num_epochs):
+    def train(self, num_epochs, eval_tasks_num=None, eval_every_n_epoch=100):
+        for epoch in range(1, num_epochs + 1):
             train_loss = self.train_epoch()
-            if self.val_loader is not None:
-                val_loss = self.validate()
-                print(
-                    f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {train_loss:.4f} - Validation Loss: {val_loss:.4f}"
-                )
-                if self.early_stopping is not None and self.early_stopping.should_stop(
-                    val_loss
-                ):
-                    print("Early stopping triggered")
-                    break
-            else:
-                print(f"Epoch {epoch + 1}/{num_epochs} - Train Loss: {train_loss:.4f}")
+            val_loss = self.validate()
+
+            log_dict = {
+                "epoch": epoch,
+                "train": {"loss": train_loss},
+                "val": {"loss": val_loss},
+            }
+
+            if epoch % eval_every_n_epoch == 0:
+                train_metrics, val_metrics = self.eval_metrics(eval_tasks_num)
+                log_dict["train"].update(train_metrics)
+                log_dict["val"].update(val_metrics)
+
+            wandb.log(log_dict)
+
+    def eval_metrics(self, tasks_num=None):
+        train_metrics = {}
+        val_metrics = {}
+        train_metrics["acc"] = eval_accuracy_on_metalearningdataset(
+            self.train_loader.dataset, self.model, tasks_num
+        )
+        val_metrics["acc"] = eval_accuracy_on_metalearningdataset(
+            self.val_loader.dataset, self.model, tasks_num
+        )
+        return train_metrics, val_metrics
 
 
 class EarlyStopping:
