@@ -78,6 +78,7 @@ def main(args):
 
     wandb.init(
         project=args.wandb_project,
+        name=args.wandb_run_name,
         config={
             "architecture": args.architecture_name,
             "dataset": args.dataset_name,
@@ -127,6 +128,11 @@ if __name__ == "__main__":
         "--wandb_project",
         type=str,
         help="Wandb project name",
+    )
+    parser.add_argument(
+        "--wandb_run_name",
+        type=str,
+        help="Wandb run name",
     )
     parser.add_argument(
         "--architecture_name",
