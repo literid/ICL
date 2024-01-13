@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import wandb
 from datasets.dataset import MetaLearningDataset
 from datasets.task_generation import PermuteProjectTaskGenerator, read_mnist
+from eval import eval_accuracy_on_metalearningdataset
 from loss import MetaLearningLoss
 from model_trainer import Trainer
 from models.MLP import MetaLearningMLP
@@ -123,6 +124,10 @@ def main(args):
         eval_every_n_epoch=args.eval_every_n_epoch,
     )
 
+    test_metrics = eval_accuracy_on_metalearningdataset(
+        test_dataset, model, DEVICE, args.eval_tasks_num
+    )
+    wandb.log({"test": {"acc": test_metrics}})
     wandb.finish()
 
 
