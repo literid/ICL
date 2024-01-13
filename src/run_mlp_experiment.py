@@ -56,6 +56,7 @@ def train_model(
     save_path,
     eval_tasks_num,
     eval_every_n_epoch,
+    min_delta,
 ):
     trainer = Trainer(
         model,
@@ -65,6 +66,7 @@ def train_model(
         train_dataloader,
         val_dataloader,
         early_stopping_patience,
+        min_delta,
     )
 
     trainer.train(
@@ -122,6 +124,7 @@ def main(args):
         save_path=args.save_path,
         eval_tasks_num=args.eval_tasks_num,
         eval_every_n_epoch=args.eval_every_n_epoch,
+        min_delta=args.min_delta,
     )
 
     test_metrics = eval_accuracy_on_metalearningdataset(
@@ -197,6 +200,8 @@ if __name__ == "__main__":
         default=100,
         help="Eval every n epochs",
     )
-
+    parser.add_argument(
+        "--min_delta", type=float, default=0.0, help="Minimum delta for early stopping"
+    )
     args = parser.parse_args()
     main(args)

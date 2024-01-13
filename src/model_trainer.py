@@ -16,6 +16,7 @@ class Trainer:
         train_loader,
         val_loader,
         early_stopping_patience=None,
+        min_delta=None,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -24,8 +25,8 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
 
-        if early_stopping_patience is not None:
-            self.early_stopping = EarlyStopping(early_stopping_patience)
+        if early_stopping_patience is not None and min_delta is not None:
+            self.early_stopping = EarlyStopping(early_stopping_patience, min_delta)
         else:
             self.early_stopping = None
 
