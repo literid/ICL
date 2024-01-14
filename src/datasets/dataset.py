@@ -1,4 +1,5 @@
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -31,3 +32,17 @@ class MetaLearningDataset(Dataset):
             x, y = next(self.task_iterators[idx])
 
         return x, y
+
+
+class MetaLearningDatasetForTransformers(MetaLearningDataset):
+    def __init__(self, tasks_num, tasks_generator, nclasses, num_examples, seed=None):
+        super().__init__(tasks_num, tasks_generator, num_examples, seed)
+        self.nclasses = nclasses
+
+    def __getitem__(self, idx):
+        x, y = super().__getitem__(idx)
+        y_oh = F.one_hot(y, num_classes=self.nclasses)
+        zeros = torch.zeros(1, y_oh.shape[-1])
+        y_oh_shifted = torch.cat([zeros, y_oh[:-1, :]], dim=0)
+
+        return torch.cat([x, y_oh_shifted], dim=-1), y
