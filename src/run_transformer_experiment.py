@@ -176,9 +176,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--tasks_batch_size", type=int, default=8, help="Tasks count per batch"
     )
-    parser.add_argument(
-        "--hidden_dim", type=int, default=32, help="Hidden dimension of the model"
-    )
     parser.add_argument("--lr", type=float, default=4e-3, help="Learning rate")
     parser.add_argument(
         "--num_epochs", type=int, default=5000, help="Number of training epochs"
